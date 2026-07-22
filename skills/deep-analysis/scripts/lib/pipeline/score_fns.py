@@ -331,6 +331,16 @@ def generate_panel(dims_scored: dict, raw: dict) -> dict:
     vote_dist = {"strongly_buy": 0, "buy": 0, "watch": 0, "wait": 0, "avoid": 0, "n_a": 0, "skip": 0}
     sig_dist = {"bullish": 0, "neutral": 0, "bearish": 0, "skip": 0}
 
+    # v3.9.2 · 活跃评委最低分地板 @author Jiane
+    # 背景：--school F 锁定单一流派时，若该流派规则对某股全部 fail（如游资遇 Stage 1 +
+    # 无龙虎榜 + 低热度股），21 位活跃评委 score 全 = 0，与 skip 评委（score 也 = 0）
+    # 不可区分。self_review.check_panel_non_empty 的 `avg==0 → critical` 判定误报
+    # "panel 分数异常"，拦截报告生成。
+    # 语义修正：active 评委 0% 规则通过 = "已评估且强烈回避"，不应等于 "未评估/skip"(0)。
+    # 给活跃评估一个非零地板，既与 skip 区分，又让 avg 不再假阳性归零。verdict 不变
+    # (score 8 仍 < BEARISH_THRESHOLD 35 → bearish → 回避)。
+    MIN_ACTIVE_SCORE = 8
+
     def _score_to_verdict(score: float, signal: str) -> str:
         if signal == "bullish" and score >= 80:
             return "强烈买入"
@@ -361,6 +371,12 @@ def generate_panel(dims_scored: dict, raw: dict) -> dict:
             comment = f"不在能力圈范围内，不做评价。\n{headline}"
             reasoning = verdict_obj.get("rationale", "")
         else:
+            # v3.9.2 · 活跃评委地板：0% 规则通过 ≠ 未评估 @author Jiane
+            # skip 评委 score=0；活跃评委若全部规则 fail 也 = 0，二者不可区分，
+            # 会让 self_review 误判 "panel 分数异常 avg=0" 拦截报告。给活跃评估
+            # 一个非零地板，verdict 不变（仍 bearish→回避）。
+            if score < MIN_ACTIVE_SCORE:
+                score = MIN_ACTIVE_SCORE
             verdict = _score_to_verdict(score, sig)
 
             # Persona voice layer

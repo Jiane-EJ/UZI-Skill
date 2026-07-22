@@ -224,6 +224,8 @@ def _render_segmental_block(ticker: str) -> str:
 
         note_html = f'<div class="seg-note">💡 {note}</div>' if note else ""
 
+        _margin_row = f'<div class="seg-metrics-row">{margin_badges}</div>' if margin_badges else ''
+
         segment_cards += (
             f'<div class="seg-card">'
             f'  <div class="seg-head">'
@@ -233,7 +235,7 @@ def _render_segmental_block(ticker: str) -> str:
             f'    <span class="seg-share">{share:.1f}%</span>'
             f'  </div>'
             f'  <div class="seg-rev">{currency} <strong>{rev:,.1f}</strong> 亿</div>'
-            f'  {f"<div class=\"seg-metrics-row\">{margin_badges}</div>" if margin_badges else ""}'
+            f'  {_margin_row}'
             f'  {sparkline_html}'
             f'  <div class="seg-drivers">{drivers_html}</div>'
             f'  {cagr_row}'
